@@ -1,9 +1,9 @@
+#Eclipse
+ 
 .classpath
 .project
 .settings/
-target/
-sql/beeterdb-data.sql
-
+ 
 # built application files
 *.apk
 *.ap_

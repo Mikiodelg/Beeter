@@ -42,6 +42,7 @@ public class StingResource {
 	@Produces(MediaType.BEETER_API_STING_COLLECTION)
 	public StingCollection getStings(@QueryParam("length") int length,
 			@QueryParam("before") long before, @QueryParam("after") long after) {
+		
 		StingCollection stings = new StingCollection();
 	 
 		Connection conn = null;
@@ -63,7 +64,7 @@ public class StingResource {
 					stmt.setTimestamp(1, new Timestamp(before));
 				else
 					stmt.setTimestamp(1, null);
-				length = (length <= 0) ? 5 : length;
+				length = (length <= 0) ? 20 : length;
 				stmt.setInt(2, length);
 			}
 			ResultSet rs = stmt.executeQuery();
@@ -96,7 +97,6 @@ public class StingResource {
 			} catch (SQLException e) {
 			}
 		}
-	 
 		return stings;
 	}
 	 
@@ -151,6 +151,8 @@ public class StingResource {
 		return sting;
 	}
 	
+
+	
 	@GET
 	@Path("/{stingid}")
 	@Produces(MediaType.BEETER_API_STING)
@@ -183,6 +185,81 @@ public class StingResource {
 	private String buildGetStingByIdQuery() {
 		return "select s.*, u.name from stings s, users u where u.username=s.username and s.stingid=?";
 	}
+	
+	//////////////////////
+	
+	@GET
+	@Path("/search")
+	@Produces(MediaType.BEETER_API_STING_COLLECTION)
+	public StingCollection Search(@QueryParam("subject") String subject,
+			@QueryParam("content") String content,@QueryParam("length") int length){
+		
+		StingCollection stings = new StingCollection();
+		 
+		Connection conn = null;
+		try {
+			conn = ds.getConnection();
+		} catch (SQLException e) {
+			throw new ServerErrorException("Could not connect to the database",
+					Response.Status.SERVICE_UNAVAILABLE);
+		}
+	 
+		PreparedStatement stmt = null;
+		try {
+			stmt = conn.prepareStatement(buildSearchStingsQuery());
+
+			stmt.setString(1, "%"+subject+"%");
+			stmt.setString(2, "%"+content+"%");
+			ResultSet rs = stmt.executeQuery();
+			
+			
+			boolean first = true;
+			long oldestTimestamp = 0;
+			
+			int contador = 0;
+			while (rs.next() && contador<length) {
+				Sting sting = new Sting();
+				sting.setId(rs.getString("stingid"));
+				sting.setUsername(rs.getString("username"));
+				sting.setSubject(rs.getString("subject"));
+				sting.setContent(rs.getString("content"));
+				oldestTimestamp = rs.getTimestamp("last_modified").getTime();
+				sting.setLastModified(oldestTimestamp);
+				if (first) {
+					first = false;
+					stings.setNewestTimestamp(sting.getLastModified());
+				}
+				stings.addSting(sting);
+				contador++;
+			}
+			stings.setOldestTimestamp(oldestTimestamp);
+		} catch (SQLException e) {
+			throw new ServerErrorException(e.getMessage(),
+					Response.Status.INTERNAL_SERVER_ERROR);
+		} finally {
+			try {
+				if (stmt != null)
+					stmt.close();
+				conn.close();
+			} catch (SQLException e) {
+			}
+		}
+	 
+		return stings;
+		
+	}
+	
+	private String buildSearchStingsQuery() {
+		
+			return "select s.* from stings s where s.subject like ? and s.content like ?";
+			
+	}
+	
+	//////////////////////
+	
+
+	
+	/////////////////////////
 	
 	@POST
 	@Consumes(MediaType.BEETER_API_STING)

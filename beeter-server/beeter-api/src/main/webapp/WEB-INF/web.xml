@@ -114,4 +114,13 @@
 
 </security-constraint>
 
+<security-constraint>
+	<web-resource-collection>
+		<web-resource-name>Stings</web-resource-name>
+		<url-pattern>/stings/search*</url-pattern>
+		<http-method>GET</http-method>
+	</web-resource-collection>
+
+</security-constraint>
+
 </web-app>
